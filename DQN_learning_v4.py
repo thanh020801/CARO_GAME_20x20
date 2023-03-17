@@ -1,6 +1,6 @@
 # Use target network
 import tensorflow as tf
-from keras.layers import Dense, Flatten, Conv2D
+from keras.layers import Dense, Flatten, Conv2D, MaxPooling2D
 from keras import Input
 from keras.models import Sequential, load_model
 import random
@@ -8,11 +8,11 @@ import numpy as np
 from collections import deque
 
 import caro_part5 as caro
-import evaluate
+from evaluate import evaluate
 EPOSIDES = 1000
 ALPHA = 0.001
 GAMMA = 0.95
-EPSILON = 1.0
+EPSILON = 0.7590483508202912
 EPSILON_DECAY = 0.995
 EPSILON_MIN = 0.005
 
@@ -22,6 +22,8 @@ BATCH_SIZE = 64
 def rewards(board, player):
     if caro.check_win(board, player):
         return 1
+    elif caro.check_win(board, -player):
+        return -1
     else:
         return 0
 
@@ -56,11 +58,13 @@ class DQNAgent:
 
     def built_model(self):
         model = Sequential()
-        model.add(Conv2D(32, kernel_size=(3,3), strides=2, activation = 'relu', input_shape = self.input_shape))
-        model.add(Conv2D(64, kernel_size=(3,3), strides=1, activation = 'relu'))
-        model.add(Conv2D(64, kernel_size=(3,3), strides=1, activation = 'relu'))
+        model.add(Conv2D(32, kernel_size=(3,3), activation = 'relu', input_shape = self.input_shape))
+        model.add(MaxPooling2D((2,2)))
+        model.add(Conv2D(64, kernel_size=(3,3), activation = 'relu'))
+        model.add(MaxPooling2D((2,2)))
+        model.add(Conv2D(128, kernel_size=(3,3), activation = 'relu'))
         model.add(Flatten())
-        model.add(Dense(512, activation='relu'))
+        model.add(Dense(64, activation='relu'))
         model.add(Dense(self.num_actions, activation = 'softmax'))
         
         model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
@@ -83,7 +87,7 @@ class DQNAgent:
         prediction = self.model.predict(victorize_state)[0]
 
         row, col = probability_positions(state, prediction)
-        print('DQN du doan cho ket qua la: ', row, ", ",col)
+        print('DQN: ', row, ", ",col)
         return row, col
 
 
@@ -93,11 +97,14 @@ class DQNAgent:
 
 
     def replay(self, batch_size):
-        r = random.randrange(30,40)    
+        r = random.sample([5,10], 1)[0]
         print('random: ', r) 
         for i in range(r):
             minibatch = random.sample(self.memory, batch_size)
+            X = []
+            y = []
             for state, act, reward, next_state, done in minibatch:
+                X.append(state)
                 state = np.reshape(state, [1,20,20,1])
                 next_state = np.reshape(next_state, [1,20,20,1])
                 # Tính Q-value cho trạng thái hiện tại
@@ -110,11 +117,15 @@ class DQNAgent:
                     target[position] = reward + self.gamma * next_max_q_value
                 q_values = self.model.predict(state, verbose=0)[0]
                 q_values[position] = target[position]
+                y.append(q_values)
 
+            X = np.array(X)
+            y =np.array(y)
                 # Huấn luyện mô hình với batch hiện tại và lưu trữ giá trị loss
-                self.model.fit(state, q_values.reshape(-1,400), epochs=1, verbose=0)
+            self.model.fit(X, y, batch_size=batch_size, epochs=2, verbose=1)
+
             self.gobal_step += 1
-            print('gobal_step: ', self.gobal_step)
+            print('i range: ', i)
             if self.epsilon > self.epsilon_min:
                 self.epsilon *= self.epsilon_decay
                 print('cap nhat epsilon: ', self.epsilon)
@@ -134,14 +145,16 @@ class DQNAgent:
 
     def load(self, name):
         self.model.load_weights(name)
+        self.target_model.load_weights(name)
 agent = DQNAgent((BOARD_SIZE, BOARD_SIZE, 1),ALPHA, GAMMA, EPSILON, EPSILON_MIN, EPSILON_DECAY, BOARD_SIZE ** 2, deque(maxlen=2000))
-# agent.load('models/model_DQN_V9_Weights.h5')
+agent.load('models/model_DQN_V14_Weights.h5')
 DQN_TURN = caro.PLAYER(-1, False)       # 0
 MINIMAX_TURN = caro.PLAYER(1, True)     # X
 
 def train(episodes, batch_size, model_file, weight_file):
     DQN_win = 0
-    
+    MINIMAX_win = 0
+    range_state = 0
 
     for episode in range(episodes):
         board = caro.init_chess(20,5)
@@ -151,38 +164,45 @@ def train(episodes, batch_size, model_file, weight_file):
         DQN_TURN.state = False
         while True:
             cur_state = board
-            # if DQN_TURN.state:
-            row, col = agent.action(board)
-            board[row][col] = DQN_TURN.chess
-            # else:
-            #     row, col = caro.set_move_bot(board, AI = MINIMAX_TURN.chess, person = DQN_TURN.chess)
-            #     board[row][col] = MINIMAX_TURN.chess
+            if DQN_TURN.state:
+                row, col = agent.action(board)
+                board[row][col] = DQN_TURN.chess
+            else:
+                row, col = caro.set_move_bot(board, AI = MINIMAX_TURN.chess, person = DQN_TURN.chess)
+                board[row][col] = MINIMAX_TURN.chess
 
             DQN_TURN.set_state()
             MINIMAX_TURN.set_state()
 	    
             next_state = board
-            # reward = evaluate.evaluate(next_state, DQN_TURN.chess, MINIMAX_TURN.chess)
+            # reward = evaluate(next_state, DQN_TURN.chess, MINIMAX_TURN.chess)
             reward = rewards(next_state, DQN_TURN.chess)
             if caro.game_over(next_state, DQN_TURN.chess, MINIMAX_TURN.chess):
                 if caro.check_win(next_state, DQN_TURN.chess):
                     print('DQN win ne')
                     DQN_win +=1
+                if caro.check_win(next_state, MINIMAX_TURN.chess):
+                    # print('DQN win ne')
+                    MINIMAX_win +=1
                 done = True
                 flag = True
             agent.remember(cur_state, (row, col), reward, next_state, done)
-            
-            if len(agent.memory) >= 1999:
+            range_state +=1
+            if len(agent.memory) >= 500:
                   agent.replay(batch_size)
                   agent.memory.clear()
-            caro.show_chess_board(board)
+                  range_state = 0
+            # caro.show_chess_board(board)
             if flag:
+                with open('logs/num_wins_v13.txt', mode='w') as f:
+                    f.write("MINIMAX_TURN wins: "+ str(MINIMAX_win) + "\nDQN_TURN wins: "+ str(DQN_win))
                 break
         episode+=1
+        print('range_state: ', range_state)
         print('episode', episode)
         agent.save(model_file, weight_file)
     return DQN_win
-DQN_win = train(EPOSIDES, BATCH_SIZE, 'models/model_DQN_V10.h5', 'models/model_DQN_V10_Weights.h5')
+DQN_win = train(EPOSIDES, BATCH_SIZE, 'models/model_DQN_V14.h5', 'models/model_DQN_V14_Weights.h5')
 # print(random.randrange(5, 15))
 
 # print('DQN_win', DQN_win, agent.num_update_target_model)

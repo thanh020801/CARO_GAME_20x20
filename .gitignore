@@ -3,11 +3,10 @@ bin/
 include/
 lib/
 Scripts/
-/data/
-/models/
-/myvenv/
+
+
 .pyenv/
-.myvenv/
+.myvenv/lib
 env/
 
 *.pyc

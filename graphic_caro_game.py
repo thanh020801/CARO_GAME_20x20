@@ -58,7 +58,7 @@ def handle_events(board, player, opponent):
             quit()
 
         elif player.state:
-            row, col = caro.set_move_bot(board, player.chess, opponent.chess)
+            row, col, _ = caro.set_move_bot(board, player.chess, opponent.chess)
             board[row][col] = player.chess
             draw_board(board)
             player.set_state()
@@ -107,11 +107,9 @@ def game():
 game()
 
 
-a  = 0
 
 with open('board.txt', mode='w') as f:
     f.write(str(BOARD_STATE))
 with open('board.txt') as f:
     print(f.read())
-    a = f.read()
 

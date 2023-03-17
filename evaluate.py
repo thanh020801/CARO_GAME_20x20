@@ -23,7 +23,7 @@ VALUE_SCORE_ATTACK_PLAYER = {
 	2: 110, 
 	3: 10000, 
 	4: 210000, 
-	5: 21000000,
+	5: 91000000,
 }
 VALUE_SCORE_DEFENSE = {
 	0: 0, 
@@ -31,7 +31,7 @@ VALUE_SCORE_DEFENSE = {
 	2: 300, 
 	3: 30000, 
 	4: 500000, 
-	5: 90000000,
+	5: 30000000,
 }
 
 # Tính điểm cho khoảng cách từ quân cờ đến vị trí trung tâm
@@ -42,10 +42,10 @@ def score_distance(board, player):
 		for j in range(BOARD):
 			if board[i][j] == player:
 				_,d = math.modf(math.sqrt((n - i)**2 + (n - j)**2))
-				score+= 100/ (d+1) + 100 / (d+1)
+				score+= 25/ (d+1) + 25 / (d+1)
 			if board[i][j] == -player:
 				_,d = math.modf(math.sqrt((n - i)**2 + (n - j)**2))
-				score-= 100/ (d+1) + 100 / (d+1)
+				score-= 25/ (d+1) + 25 / (d+1)
 
 	return score
 
@@ -76,6 +76,7 @@ def get_list_start_end(arr, player):
 	count1 = 0
 	list_max_count1 = []
 	start = -1
+	# [0,0,0,0,1,0,0,0,0,1,0,0,1]
 	for i in range(len(arr)):
 		# Nếu cờ đối thủ ở vị trí đầu tiên
 		if arr[i] == -player:
@@ -84,7 +85,7 @@ def get_list_start_end(arr, player):
 				start = i
 		#  Nếu cở đối thử ở vị trí cuối cùng
 		if len(arr)-1 == i:
-			if start >=0:
+			if start >=0 and arr[i] == -player:
 				list_max_count1.append([start, i])
 				break
 		#  Nếu không phải cờ đối thủ
@@ -104,10 +105,10 @@ def count_evaluate_attack(arr, player, VALUE_SCORE):
 	# print(list_attack)
 	for start , end in list_attack:
 		block = check_block(arr, start, end, -player)
-		if block == 2:
+		num = end - start +1
+		if block == 2 and num < 5:
 			score_player += 0
 		else:
-			num = end - start +1
 			if num > 5:
 				num = 5
 			score_player += VALUE_SCORE[num]
@@ -141,8 +142,10 @@ def count_evaluate_defense(arr, player):
 def evaluate(board,player, opponent):
 	score = 0
 	for i in board:
+		a=0
 		score += count_evaluate_defense(i, player)
 		score += count_evaluate_attack(i, player, VALUE_SCORE_ATTACK_PLAYER)  # 11  0
+		# print('score row', score)
 		score -= count_evaluate_attack(i, opponent, VALUE_SCORE_ATTACK_OPPONENT)  # 0  -11
 
 	for i in range(BOARD):
@@ -163,12 +166,49 @@ def evaluate(board,player, opponent):
 			a=1
 			score += count_evaluate_defense(i,  player)
 			score += count_evaluate_attack(i, player, VALUE_SCORE_ATTACK_PLAYER)  # 0
+			# print('score row', score)
 			score -= count_evaluate_attack(i, opponent, VALUE_SCORE_ATTACK_OPPONENT) #-11
 
 
-	# print('point bot diag: ', score)
-	score += score_distance(board, player)
-	# print('score_distance(board, BOT.chess)', score_distance(board, BOT.chess))
-	# print('score end: ', score)
+	# score += score_distance(board, player)
+	if score < 0:
+		score = 0
 	return score
-# ////////////////////////////////////////////////////////////////////////////////
+
+
+# b = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+#  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+
+# s = evaluate(b, -1, 1)
+# print(s)
+# maxx = 0
+# row, col = 0, 0
+# for i in range(20):
+# 	for j in range(20):
+# 		rb = b
+# 		rb[i][j] = -1
+# 		score = evaluate(rb,-1,1)
+# 		rb[i][j] = 0
+# 		print(score)
+# 		if maxx < score:
+# 			maxx = score
+# 			row, col = i,j
+# print(maxx, row, col)
