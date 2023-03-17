@@ -3,7 +3,9 @@ bin/
 include/
 lib/
 Scripts/
-
+/models/
+/data/
+/myvenv/
 
 .pyenv/
 .myvenv/lib
