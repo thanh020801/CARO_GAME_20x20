@@ -14,12 +14,12 @@ from evaluate import evaluate
 EPOSIDES = 20000
 ALPHA = 0.001
 GAMMA = 0.95
-EPSILON = 1.0
+EPSILON = 0.392711028357805              #0.45660974774391455           #0.5989560064661611                 #0.7856781408072188
 EPSILON_DECAY = 0.99
 EPSILON_MIN = 0.005
 
 BOARD_SIZE = 20
-BATCH_SIZE = 64
+BATCH_SIZE = 128
 
 def rewards(board, player):
     if caro.check_win(board, player):
@@ -67,42 +67,42 @@ class DQNAgent:
         self.epsilon_decay = epsilon_decay
         self.num_actions = num_actions
         self.memory = memory
-        self.gobal_step = 0
+        self.gobal_step = 93          #78       #51         #24
         self.num_update_target_model = 0
         self.model = self.built_model()
         self.target_model = self.built_model()
 
-    def win_rate(self, y_true, y_pred):
-        total_reward = 0
-        # init = tf.global_variables_initializer()
-        # sess = tf.Session()
-        # # // run variables initializer
-        # sess.run(init)
-        print(tf.get_static_value(y_pred))
-        # print(sess.run([y_pred]))
-        for i in range(len(self.memory)):
-            total_reward += self.memory[i][2]
-        # exit()
-        return total_reward / len(self.memory)
-
-
 
     def built_model(self):
         model = Sequential()
-        model.add(Conv2D(32, kernel_size=(3,3),  activation = 'relu', input_shape = self.input_shape))
-        # model.add(MaxPooling2D((2,2)))
-        model.add(Conv2D(64, kernel_size=(3,3),  activation = 'relu'))
-        # model.add(MaxPooling2D((2,2)))
-        model.add(Conv2D(128, kernel_size=(3,3), activation = 'relu'))
+        model.add(Conv2D(filters=32, kernel_size=(5,5), input_shape = self.input_shape, activation='relu'))
+        model.add(Conv2D(filters=64, kernel_size=(5,5), activation='relu'))
+        model.add(Conv2D(filters=128, kernel_size=(3,3), activation='relu'))
+        model.add(Conv2D(filters=256, kernel_size=(3,3), activation='relu'))
         model.add(Flatten())
-        model.add(Dense(512, activation='relu'))
-        model.add(Dense(self.num_actions, activation = 'relu'))
-        
-        model.compile(optimizer=Adam(learning_rate=self.alpha),  
-                      loss='mse', 
-                      metrics=[self.win_rate]
-                      )
+        model.add(Dense(500, activation='relu'))
+        model.add(Dense(1000, activation='relu'))
+        model.add(Dense(self.num_actions))
+        model.summary()
+        model.compile(optimizer=Adam(learning_rate=self.alpha), loss='mse', metrics=['accuracy'])
         return model
+
+    # def built_model(self):
+    #     model = Sequential()
+    #     model.add(Conv2D(32, kernel_size=(3,3),  activation = 'relu', input_shape = self.input_shape))
+    #     # model.add(MaxPooling2D((2,2)))
+    #     model.add(Conv2D(64, kernel_size=(3,3),  activation = 'relu'))
+    #     # model.add(MaxPooling2D((2,2)))
+    #     model.add(Conv2D(128, kernel_size=(3,3), activation = 'relu'))
+    #     model.add(Flatten())
+    #     model.add(Dense(512, activation='relu'))
+    #     model.add(Dense(self.num_actions, activation = 'relu'))
+        
+    #     model.compile(optimizer=Adam(learning_rate=self.alpha),  
+    #                   loss='mse', 
+    #                   metrics=['accuracy']
+    #                   )
+    #     return model
 
 
     def action(self, state):
@@ -150,7 +150,7 @@ class DQNAgent:
         X = []
         y = []
         # print('reward: ', self.memory[:][2])
-        self.sigmoid_reward()
+        # self.sigmoid_reward()
 
         for state, act, reward, next_state, done in self.memory:
             if reward < 0:
@@ -184,7 +184,7 @@ class DQNAgent:
         y =np.array(y)
         print('bat dau fit')
         
-        self.model.fit(X, y, batch_size=batch_size, epochs=100, verbose=1)
+        self.model.fit(X, y, batch_size=batch_size, epochs=50, verbose=1)
         self.gobal_step += 1
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
@@ -208,8 +208,8 @@ class DQNAgent:
         self.model.load_weights(name)
         self.target_model.load_weights(name)
 agent = DQNAgent((BOARD_SIZE, BOARD_SIZE, 1),ALPHA, GAMMA, EPSILON, EPSILON_MIN, EPSILON_DECAY, BOARD_SIZE ** 2, deque(maxlen=2000))
-version_log = str(20)
-agent.load('models/model_DQN_V'+version_log+'_Weights.h5')
+version_log = str(1)
+agent.load('models/mega_DQN_V'+version_log+'_Weights.h5')
 DQN_TURN = caro.PLAYER(1, False)       # X
 MINIMAX_TURN = caro.PLAYER(-1, True)     # O
 
@@ -259,7 +259,7 @@ def train(episodes, batch_size, model_file, weight_file):
             with open('data/data_v'+version_log+'.txt', mode='a') as f:
                 f.write(str(cur_state) + ",\n")
             range_state +=1
-            if len(agent.memory) >= 50:
+            if len(agent.memory) >= 1000:
                 
                 # exit()
                 agent.replay(batch_size, model_file, weight_file)
@@ -281,5 +281,5 @@ def train(episodes, batch_size, model_file, weight_file):
         # print('episode', episode)
         
     return DQN_win
-DQN_win = train(EPOSIDES, BATCH_SIZE, 'models/model_DQN_V'+version_log+'.h5', 'models/model_DQN_V'+version_log+'_Weights.h5')
+DQN_win = train(EPOSIDES, BATCH_SIZE, 'models/mega_DQN_V'+version_log+'.h5', 'models/mega_DQN_V'+version_log+'_Weights.h5')
 # print(random.randrange(5, 15))

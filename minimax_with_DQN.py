@@ -4,8 +4,8 @@ import caro_part5 as caro
 import numpy as np
 from tensorflow import keras
 
-model = keras.models.load_model('models/model_DQN_V20.h5')
-model.load_weights('models/model_DQN_V20_Weights.h5')
+model = keras.models.load_model('models/mega_DQN_v1.h5')
+# model.load_weights('models/dense_v1_Weights.h5')
 # tim phan tu co vi tri hop le va co xac suat du doan cao nhat
 def probability_positions(board, prediction):
     # emp = caro.empty_cells_around(board,2)
@@ -89,12 +89,13 @@ def handle_events(board, player, opponent):
             # opponent.set_state()
 
             cur_board = np.reshape(board, [1,20,20,1])
-            pred = model.predict(cur_board)[0]
+            pred = model.predict(cur_board, verbose = 0)[0]
             # pred = np.argmax(pred,axis = 1)
             # row, col = divmod(pred,20)
             # print("row: ", row, ",col: ", col)
             row, col = probability_positions(board, pred)
             board[row][col] = player.chess
+            print(row, col)
             draw_board(board)
             player.set_state()
             opponent.set_state()  
@@ -137,8 +138,10 @@ def handle_events(board, player, opponent):
 BOARD_STATE =  caro.init_chess(caro.BOARD, 5)
 
 
-BOT.state = True
-HUMAN.state = False
+BOT.state = False
+HUMAN.state = True
+# BOT.chess = 1
+# HUMAN.chess = -1
 def game():
     while True:
         # show_chess_board(BOARD_STATE)
